@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>TKG Content OS V1</title>
+<meta name="theme-color" content="#161513">
+<meta name="description" content="TKG Content OS — daily content prompt generator for Canva, Gemini, InVideo, ChatGPT">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root{
+    --marble:#F2EFE9;
+    --marble-dim:#E5E0D6;
+    --charcoal:#161513;
+    --charcoal-2:#1F1D1A;
+    --charcoal-3:#2A2724;
+    --ember:#FF5722;
+    --ember-dim:#C94A1F;
+    --gold:#D4AF37;
+    --gold-dim:#B08F2A;
+    --line:#3A362F;
+    --text-dim:#A8A199;
+    --danger:#E0524A;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:var(--charcoal);
+    color:var(--marble);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;
+    justify-content:center;
+    min-height:100vh;
+  }
+
+  #app{
+    width:100%;
+    max-width:430px;
+    min-height:100vh;
+    background:var(--charcoal);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+  }
+
+  /* ===== HEADER ===== */
+  header{
+    padding:calc(14px + var(--safe-top)) 18px 14px;
+    background:linear-gradient(180deg, var(--charcoal-2), var(--charcoal));
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    z-index:20;
+  }
+  header .brandrow{display:flex; align-items:center; justify-content:space-between;}
+  header h1{
+    font-size:15px;
+    letter-spacing:1.5px;
+    margin:0;
+    color:var(--marble);
+    font-weight:700;
+    text-transform:uppercase;
+  }
+  header h1 span{color:var(--ember);}
+  .badge{
+    font-size:10px;
+    color:var(--gold);
+    border:1px solid var(--gold-dim);
+    padding:3px 8px;
+    border-radius:20px;
+    letter-spacing:0.5px;
+    white-space:nowrap;
+  }
+  header .sub{
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:4px;
+    letter-spacing:0.3px;
+  }
+
+  /* ===== MAIN SCROLL AREA ===== */
+  main{
+    flex:1;
+    padding:16px 16px calc(90px + var(--safe-bottom));
+    overflow-y:auto;
+  }
+  .screen{display:none;}
+  .screen.active{display:block; animation:fadein .15s ease;}
+  @keyframes fadein{from{opacity:0;} to{opacity:1;}}
+
+  /* ===== CARD ===== */
+  .card{
+    background:var(--charcoal-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .card-title{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--gold);
+    margin:0 0 10px 0;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .card-title .n{
+    background:var(--ember);
+    color:var(--charcoal);
+    width:18px; height:18px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+  }
+
+  /* ===== CHIP SELECTOR GRID ===== */
+  .chipgrid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .chip{
+    background:var(--charcoal-3);
+    border:1px solid var(--line);
+    color:var(--marble-dim);
+    font-size:12.5px;
+    padding:9px 13px;
+    border-radius:10px;
+    cursor:pointer;
+    user-select:none;
+    transition:all .12s ease;
+    line-height:1.3;
+  }
+  .chip:active{transform:scale(0.96);}
+  .chip.selected{
+    background:var(--ember);
+    border-color:var(--ember);
+    color:var(--charcoal);
+    font-weight:700;
+  }
+  .chip.selected.gold{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--charcoal);
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn{
+    width:100%;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    font-size:14px;
+    font-weight:700;
+    letter-spacing:0.4px;
+    cursor:pointer;
+    text-align:center;
+    transition:transform .1s ease, opacity .1s ease;
+  }
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:var(--ember); color:var(--marble);}
+  .btn-gold{background:var(--gold); color:var(--charcoal);}
+  .btn-outline{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--marble-dim);
+  }
+  .btn-danger{background:transparent; border:1px solid var(--danger); color:var(--danger);}
+  .btn-sm{padding:9px 14px; font-size:12px; width:auto; border-radius:9px;}
+  .btn-row{display:flex; gap:8px;}
+  .btn-row .btn{flex:1;}
+  .btn:disabled{opacity:0.4;}
+
+  /* ===== OUTPUT BLOCK ===== */
+  .output-box{
+    background:var(--charcoal);
+    border:1px solid var(--gold-dim);
+    border-radius:12px;
+    padding:14px;
+    font-size:12.5px;
+    line-height:1.6;
+    color:var(--marble-dim);
+    white-space:pre-wrap;
+    max-height:340px;
+    overflow-y:auto;
+    margin-bottom:10px;
+  }
+  .output-box .locktext{
+    color:var(--ember);
+    font-weight:600;
+    display:block;
+    margin-bottom:10px;
+    border-bottom:1px dashed var(--line);
+    padding-bottom:10px;
+  }
+  .meta-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:10px;
+  }
+  .tag{
+    font-size:10px;
+    background:var(--charcoal-3);
+    color:var(--text-dim);
+    padding:4px 9px;
+    border-radius:6px;
+    border:1px solid var(--line);
+  }
+  .tag.ember{color:var(--ember); border-color:var(--ember-dim);}
+  .tag.gold{color:var(--gold); border-color:var(--gold-dim);}
+
+  .hashtag-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-bottom:12px;
+  }
+  .hashtag{
+    font-size:11px;
+    background:rgba(212,175,55,0.1);
+    color:var(--gold);
+    padding:5px 10px;
+    border-radius:14px;
+    border:1px solid var(--gold-dim);
+  }
+
+  .empty-state{
+    text-align:center;
+    color:var(--text-dim);
+    font-size:12.5px;
+    padding:30px 10px;
+  }
+
+  /* ===== TOAST ===== */
+  #toast{
+    position:fixed;
+    bottom:calc(86px + var(--safe-bottom));
+    left:50%;
+    transform:translateX(-50%) translateY(20px);
+    background:var(--gold);
+    color:var(--charcoal);
+    font-size:12.5px;
+    font-weight:700;
+    padding:10px 18px;
+    border-radius:30px;
+    opacity:0;
+    transition:all .25s ease;
+    z-index:100;
+    pointer-events:none;
+    white-space:nowrap;
+    max-width:90%;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ===== BOTTOM NAV ===== */
+  nav.tabbar{
+    position:fixed;
+    bottom:0;
+    left:50%;
+    transform:translateX(-50%);
+    width:100%;
+    max-width:430px;
+    background:var(--charcoal-2);
+    border-top:1px solid var(--line);
+    display:flex;
+    padding-bottom:var(--safe-bottom);
+    z-index:30;
+  }
+  .tab-btn{
+    flex:1;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:3px;
+    padding:10px 0 8px;
+    cursor:pointer;
+    font-size:10px;
+    letter-spacing:0.3px;
+  }
+  .tab-btn .ic{font-size:18px; line-height:1;}
+  .tab-btn.active{color:var(--ember);}
+  .tab-btn.active .ic{transform:translateY(-1px);}
+
+  /* ===== DAY ENGINE ===== */
+  .day-hero{
+    text-align:center;
+    padding:18px 10px;
+  }
+  .day-hero .num{
+    font-size:42px;
+    font-weight:800;
+    color:var(--gold);
+    line-height:1;
+  }
+  .day-hero .of{font-size:12px; color:var(--text-dim); margin-top:4px;}
+  .day-progress{
+    height:6px;
+    background:var(--charcoal-3);
+    border-radius:4px;
+    overflow:hidden;
+    margin-top:14px;
+  }
+  .day-progress-fill{
+    height:100%;
+    background:linear-gradient(90deg, var(--ember), var(--gold));
+    transition:width .3s ease;
+  }
+  .day-assign{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+    font-size:12.5px;
+  }
+  .day-assign:last-child{border-bottom:none;}
+  .day-assign .lbl{color:var(--text-dim);}
+  .day-assign .val{color:var(--marble); font-weight:600;}
+
+  .set-output{
+    border-bottom:1px solid var(--line);
+    padding:12px 0;
+  }
+  .set-output:last-child{border-bottom:none;}
+  .set-output .fmt-label{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.6px;
+    color:var(--ember);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .set-output .txt{
+    font-size:12px;
+    color:var(--marble-dim);
+    line-height:1.5;
+    white-space:pre-wrap;
+  }
+  .copy-mini{
+    float:right;
+    background:var(--charcoal-3);
+    border:1px solid var(--line);
+    color:var(--gold);
+    font-size:10px;
+    padding:3px 9px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+
+  /* ===== HISTORY LIST ===== */
+  .history-item{
+    background:var(--charcoal-2);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:13px;
+    margin-bottom:10px;
+  }
+  .history-item .hi-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:6px;
+  }
+  .history-item .hi-type{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--marble);
+  }
+  .history-item .hi-date{
+    font-size:10px;
+    color:var(--text-dim);
+    white-space:nowrap;
+  }
+  .history-item .hi-preview{
+    font-size:11.5px;
+    color:var(--text-dim);
+    line-height:1.45;
+    max-height:0;
+    overflow:hidden;
+    transition:max-height .2s ease;
+  }
+  .history-item.expanded .hi-preview{max-height:400px; margin-top:8px;}
+  .history-item .hi-actions{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+  }
+
+  .stat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+  .stat-box{
+    background:var(--charcoal-3);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+  }
+  .stat-box .stat-label{font-size:10.5px; color:var(--text-dim);}
+  .stat-box .stat-num{font-size:16px; font-weight:800; color:var(--gold); margin-top:2px;}
+
+  textarea.import-area{
+    width:100%;
+    background:var(--charcoal-3);
+    border:1px solid var(--line);
+    border-radius:10px;
+    color:var(--marble-dim);
+    font-size:11px;
+    padding:10px;
+    min-height:90px;
+    resize:vertical;
+    font-family:monospace;
+    margin-bottom:10px;
+  }
+
+  .info-line{
+    font-size:11.5px;
+    color:var(--text-dim);
+    line-height:1.6;
+    margin:0 0 10px 0;
+  }
+  .info-line b{color:var(--marble-dim);}
+
+  .section-label{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.8px;
+    color:var(--text-dim);
+    margin:0 0 8px 2px;
+  }
+
+  hr.divider{
+    border:none;
+    border-top:1px solid var(--line);
+    margin:14px 0;
+  }
+
+  ::-webkit-scrollbar{width:0; height:0;}
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <header>
+    <div class="brandrow">
+      <h1>TKG <span>CONTENT OS</span></h1>
+      <span class="badge">V1</span>
+    </div>
+    <div class="sub" id="headerSub">Grounded in real TKG photos, videos &amp; customers</div>
+  </header>
+
+  <main id="mainScroll">
+
+    <!-- ===================== SCREEN 1: GENERATOR ===================== -->
+    <section class="screen active" id="screen-generator">
+
+      <div class="card">
+        <p class="card-title"><span class="n">1</span> CONTENT TYPE</p>
+        <div class="chipgrid" id="contentTypeGrid"></div>
+      </div>
+
+      <div class="card">
+        <p class="card-title"><span class="n">2</span> DESIGN SYSTEM</p>
+        <div class="chipgrid" id="designSystemGrid"></div>
+      </div>
+
+      <div class="card">
+        <p class="card-title"><span class="n">3</span> FORMAT TARGET</p>
+        <div class="chipgrid" id="formatGrid"></div>
+      </div>
+
+      <div class="card">
+        <p class="card-title"><span class="n">4</span> PLATFORM OUTPUT</p>
+        <div class="chipgrid" id="platformGrid"></div>
+      </div>
+
+      <button class="btn btn-primary" id="generateBtn" style="margin-bottom:14px;">GENERATE PROMPT</button>
+
+      <div class="card" id="outputCard" style="display:none;">
+        <p class="card-title">✦ GENERATED PROMPT</p>
+        <div class="meta-row" id="outputMeta"></div>
+        <div class="output-box" id="outputBox"></div>
+        <div class="hashtag-row" id="outputHashtags"></div>
+        <div class="btn-row">
+          <button class="btn btn-gold btn-sm" id="copyBtn" style="flex:1;">COPY PROMPT</button>
+          <button class="btn btn-outline btn-sm" id="regenBtn" style="flex:1;">REGENERATE</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================== SCREEN 2: 365 ENGINE ===================== -->
+    <section class="screen" id="screen-engine">
+
+      <div class="card">
+        <div class="day-hero">
+          <div class="num" id="dayNum">1</div>
+          <div class="of">OF 365 — TKG CONTENT CYCLE</div>
+          <div class="day-progress"><div class="day-progress-fill" id="dayProgressFill"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">✦ TODAY'S ASSIGNMENT</p>
+        <div class="day-assign"><span class="lbl">Content Type</span><span class="val" id="todayContentType">—</span></div>
+        <div class="day-assign"><span class="lbl">Design System</span><span class="val" id="todayDesignSystem">—</span></div>
+        <div class="day-assign"><span class="lbl">Platform Rotation</span><span class="val" id="todayPlatform">—</span></div>
+      </div>
+
+      <button class="btn btn-primary" id="generateTodaySetBtn" style="margin-bottom:10px;">GENERATE TODAY'S FULL SET</button>
+      <button class="btn btn-outline" id="advanceDayBtn" style="margin-bottom:14px;">ADVANCE TO NEXT DAY →</button>
+
+      <div class="card" id="todaySetCard" style="display:none;">
+        <p class="card-title">✦ TODAY'S CONTENT SET</p>
+        <div id="todaySetOutput"></div>
+      </div>
+
+    </section>
+
+    <!-- ===================== SCREEN 3: MEMORY / HISTORY ===================== -->
+    <section class="screen" id="screen-history">
+
+      <div class="card">
+        <p class="card-title">✦ ROTATION BALANCE</p>
+        <div class="stat-grid" id="statGrid"></div>
+      </div>
+
+      <p class="section-label" id="historyCountLabel">SAVED PROMPTS</p>
+      <div id="historyList"></div>
+
+    </section>
+
+    <!-- ===================== SCREEN 4: SETTINGS / DATA ===================== -->
+    <section class="screen" id="screen-settings">
+
+      <div class="card">
+        <p class="card-title">✦ MANDATORY REFERENCE RULE</p>
+        <p class="info-line">This text is force-injected into <b>every single generated prompt</b>, on every platform, with no exceptions and no toggle to disable it:</p>
+        <div class="output-box" style="margin-bottom:0; max-height:160px;" id="lockRuleDisplay"></div>
+      </div>
+
+      <div class="card">
+        <p class="card-title">✦ EXPORT DATA</p>
+        <p class="info-line">Exports all saved prompts, history memory, and day counter as a single JSON file.</p>
+        <button class="btn btn-gold" id="exportBtn">EXPORT JSON</button>
+      </div>
+
+      <div class="card">
+        <p class="card-title">✦ IMPORT DATA</p>
+        <p class="info-line">Paste previously exported JSON below to restore it. This will merge with current data.</p>
+        <textarea class="import-area" id="importArea" placeholder="Paste exported JSON here..."></textarea>
+        <button class="btn btn-outline" id="importBtn">IMPORT JSON</button>
+      </div>
+
+      <div class="card">
+        <p class="card-title">✦ DAY COUNTER</p>
+        <p class="info-line">Current day: <b id="settingsDayNum">1</b> / 365</p>
+        <button class="btn btn-outline" id="resetDayBtn">RESET DAY COUNTER TO 1</button>
+      </div>
+
+      <div class="card">
+        <p class="card-title">✦ DANGER ZONE</p>
+        <p class="info-line">Permanently deletes all prompts, history, and settings stored in this browser. Cannot be undone.</p>
+        <button class="btn btn-danger" id="clearAllBtn">CLEAR ALL DATA</button>
+      </div>
+
+      <div class="card" style="background:transparent; border:none; text-align:center;">
+        <p class="info-line" style="margin:0;">TKG Content OS V1 — standalone system<br>Not connected to Customer OS or any other system.</p>
+      </div>
+
+    </section>
+
+  </main>
+
+  <div id="toast"></div>
+
+  <nav class="tabbar">
+    <button class="tab-btn active" data-screen="generator"><span class="ic">🎯</span>Generator</button>
+    <button class="tab-btn" data-screen="engine"><span class="ic">📅</span>365 Engine</button>
+    <button class="tab-btn" data-screen="history"><span class="ic">🗂️</span>Memory</button>
+    <button class="tab-btn" data-screen="settings"><span class="ic">⚙️</span>Settings</button>
+  </nav>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     TKG CONTENT OS V1 — STANDALONE SYSTEM
+     Not connected to Customer OS or any other system.
+     No backend. No database. localStorage only.
+     No AI-generated randomness — content is assembled from
+     fixed, real-world-grounded categories only.
+  ========================================================= */
+
+  // ---------- NAMESPACED STORAGE KEYS ----------
+  const KEYS = {
+    PROMPTS:   "tkg_os_v1_prompts",
+    HISTORY:   "tkg_os_v1_history",
+    SETTINGS:  "tkg_os_v1_settings",
+    DAY:       "tkg_os_v1_daycounter"
+  };
+
+  // ---------- MANDATORY REFERENCE RULE (immutable, always prepended) ----------
+  const MANDATORY_RULE =
+"Use uploaded TKG reference images and videos as the primary visual source.\n" +
+"Do not invent food appearance, stall design, packaging, logo, colours, location, uniforms, customers or branding.\n" +
+"Match the real TKG identity.";
+
+  // ---------- FIXED REGISTRIES (no randomness in content meaning, only selection order) ----------
+
+  const CONTENT_TYPES = [
+    {
+      key:"Food Story",
+      desc:"A short narrative built around one real TKG dish — its taste, texture, and the moment it's served.",
+      hashtags:["#TKGFoodStory","#SuratStreetFood","#RealFood"],
+      brief:"Center the story on one specific real dish from uploaded TKG photos/videos. Show it being plated, served, or eaten. Use real textures and real steam/heat/colour exactly as captured on camera — nothing invented."
+    },
+    {
+      key:"Customer Story",
+      desc:"A real customer's reaction, quote, or visit moment.",
+      hashtags:["#RealCustomers","#TKGStories","#CustomerLove"],
+      brief:"Use a real customer interaction from uploaded footage or a real review. Show their genuine reaction (laughing, ordering, eating, talking). No invented customers or invented dialogue beyond what was actually said or written in a real review."
+    },
+    {
+      key:"Review Highlight",
+      desc:"Spotlight an authentic written or verbal review of TKG.",
+      hashtags:["#TKGReviews","#RealFeedback","#SuratEats"],
+      brief:"Pull from an actual existing TKG review (text or video). Present the real quote/rating as the centerpiece. Do not fabricate review content — only real, already-collected reviews."
+    },
+    {
+      key:"Founder Story",
+      desc:"A personal narrative beat from the TKG founder's journey.",
+      hashtags:["#FounderStory","#TKGJourney","#BehindTheBrand"],
+      brief:"Use real footage/photos of the actual founder. Tell one real, specific moment from the TKG journey — not a generic motivational story, but something rooted in TKG's real history."
+    },
+    {
+      key:"Making Process",
+      desc:"Step-by-step real preparation of a TKG item.",
+      hashtags:["#MakingProcess","#TKGKitchen","#FreshlyMade"],
+      brief:"Sequence real preparation footage step by step (chopping, mixing, grilling, plating) exactly as captured. Order the real footage clips chronologically — do not invent steps not present in the source material."
+    },
+    {
+      key:"Behind The Stall",
+      desc:"A glimpse into daily stall operations and team.",
+      hashtags:["#BehindTheStall","#TKGTeam","#StallLife"],
+      brief:"Use real footage of the actual stall, real staff, real setup/closing routines. Show authentic day-to-day operations — no staged or invented stall design."
+    },
+    {
+      key:"Weekend Special",
+      desc:"Highlight the real weekend rush/crowd/special item.",
+      hashtags:["#WeekendSpecial","#TKGWeekend","#CrowdFavourite"],
+      brief:"Use real weekend footage — actual crowd size, actual queue, actual weekend-only item if one exists. Reflect real weekend energy, not a generic 'busy stall' stock feel."
+    },
+    {
+      key:"Poll",
+      desc:"A two-option real-choice poll about TKG items/experience.",
+      hashtags:["#TKGPoll","#YouDecide","#SuratFoodie"],
+      brief:"Frame a simple two-option poll using two real TKG menu items or two real serving styles shown in uploaded media. Both options must be real, existing TKG offerings."
+    },
+    {
+      key:"Question",
+      desc:"An open engagement question rooted in real TKG context.",
+      hashtags:["#TKGQuestion","#TellUs","#SuratStreetFood"],
+      brief:"Ask one open question tied to a real TKG visual (e.g. a real dish shown on screen). The question should invite real customer memories/preferences, not abstract trivia."
+    },
+    {
+      key:"Ingredient Story",
+      desc:"Spotlight one real ingredient TKG actually uses.",
+      hashtags:["#IngredientStory","#RealIngredients","#TKGKitchen"],
+      brief:"Feature one real ingredient as shown in uploaded raw-ingredient footage/photos. Describe its real role in the real TKG recipe — no invented sourcing stories or invented ingredient origins."
+    },
+    {
+      key:"Fun Fact",
+      desc:"A true, small fact about TKG or the dish, paired with real visuals.",
+      hashtags:["#FunFact","#TKGTrivia","#DidYouKnow"],
+      brief:"State one true, verifiable fact about TKG, the dish, or Surat street food culture, paired with real existing footage. The fact must be true and TKG-confirmed — never invented trivia."
+    },
+    {
+      key:"Festival Post",
+      desc:"A festival-themed post using real TKG decor/specials if they exist.",
+      hashtags:["#FestivalSpecial","#TKGFestive","#SuratFestival"],
+      brief:"If TKG has real festival decor, festival-special items, or festival footage, use it. Tie the real festive context (the actual festival being marked) to real TKG visuals only — do not invent decorations or festive items that don't exist at the stall."
+    }
+  ];
+
+  const DESIGN_SYSTEMS = [
+    { key:"Coal Ember", desc:"Dark charcoal background, ember-orange highlight accents, high contrast on food shots." },
+    { key:"White Marble", desc:"Clean bright marble-white background, minimal text, premium product-shot feel." },
+    { key:"Customer Story", desc:"Warm, candid, documentary framing centered on real people's faces and reactions." },
+    { key:"Process Documentary", desc:"Sequential step shots, raw kitchen tones, handheld documentary pacing." },
+    { key:"Weekend Crowd", desc:"Wide shots, motion blur of real crowd, energetic colour grade matching actual footage." },
+    { key:"Surat Street Food", desc:"Street-level framing, golden hour tones, authentic local-market atmosphere." }
+  ];
+
+  const FORMAT_TARGETS = ["Daily Post Idea","Reel Idea","Story Idea","Poll Idea","Question Idea"];
+
+  const PLATFORMS = ["Canva","Gemini","InVideo","ChatGPT"];
+
+  // ---------- STATE ----------
+  let state = {
+    contentType: null,
+    designSystem: null,
+    formatTarget: FORMAT_TARGETS[0],
+    platform: PLATFORMS[0],
+    lastOutput: null
+  };
+
+  // ---------- STORAGE HELPERS ----------
+  function loadJSON(key, fallback){
+    try{
+      const raw = localStorage.getItem(key);
+      if(!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed === null || parsed === undefined ? fallback : parsed;
+    }catch(e){
+      console.error("TKG OS storage read error for", key, e);
+      return fallback;
+    }
+  }
+  function saveJSON(key, val){
+    try{
+      localStorage.setItem(key, JSON.stringify(val));
+      return true;
+    }catch(e){
+      console.error("TKG OS storage write error for", key, e);
+      toast("Storage error — data may not be saved");
+      return false;
+    }
+  }
+
+  function getPrompts(){ return loadJSON(KEYS.PROMPTS, []); }
+  function setPrompts(arr){ saveJSON(KEYS.PROMPTS, arr); }
+
+  function getHistory(){
+    return loadJSON(KEYS.HISTORY, {
+      lastContentTypes: [],
+      lastDesignSystems: [],
+      lastHashtagSets: [],
+      contentTypeCounts: {},
+      designSystemCounts: {}
+    });
+  }
+  function setHistory(h){ saveJSON(KEYS.HISTORY, h); }
+
+  function getSettings(){
+    return loadJSON(KEYS.SETTINGS, { lastPlatform:"Canva", lastFormatTarget:"Daily Post Idea", theme:"dark" });
+  }
+  function setSettings(s){ saveJSON(KEYS.SETTINGS, s); }
+
+  function getDayCounter(){
+    return loadJSON(KEYS.DAY, { currentDay: 1, startDate: new Date().toISOString().slice(0,10) });
+  }
+  function setDayCounter(d){ saveJSON(KEYS.DAY, d); }
+
+  // ---------- ANTI-REPETITION ENGINE ----------
+  // Picks the LEAST recently used + least frequently used item from a fixed list.
+  function pickLeastUsed(list, recentArr, countMap, keyFn){
+    keyFn = keyFn || (x => x.key || x);
+    // Score: items not in recentArr score better; among those, lowest count wins.
+    let best = null, bestScore = Infinity;
+    list.forEach(item=>{
+      const k = keyFn(item);
+      const recentIndex = recentArr.indexOf(k); // -1 if not recent
+      const recencyPenalty = recentIndex === -1 ? 0 : (recentArr.length - recentIndex) * 10;
+      const freqPenalty = countMap[k] || 0;
+      const score = recencyPenalty + freqPenalty;
+      if(score < bestScore){
+        bestScore = score;
+        best = item;
+      }
+    });
+    return best;
+  }
+
+  function recordUsage(contentTypeKey, designSystemKey, hashtags){
+    const h = getHistory();
+    h.lastContentTypes.unshift(contentTypeKey);
+    h.lastContentTypes = h.lastContentTypes.slice(0,10);
+    h.lastDesignSystems.unshift(designSystemKey);
+    h.lastDesignSystems = h.lastDesignSystems.slice(0,10);
+    h.lastHashtagSets.unshift(hashtags);
+    h.lastHashtagSets = h.lastHashtagSets.slice(0,10);
+    h.contentTypeCounts[contentTypeKey] = (h.contentTypeCounts[contentTypeKey]||0) + 1;
+    h.designSystemCounts[designSystemKey] = (h.designSystemCounts[designSystemKey]||0) + 1;
+    setHistory(h);
+  }
+
+  // ---------- PROMPT ASSEMBLY ----------
+  function buildBasePrompt(contentTypeObj, designSystemObj, formatTarget){
+    return (
+      "CONTENT TYPE: " + contentTypeObj.key + "\n" +
+      "FORMAT TARGET: " + formatTarget + "\n" +
+      "DESIGN SYSTEM: " + designSystemObj.key + " — " + designSystemObj.desc + "\n\n" +
+      "CREATIVE BRIEF:\n" + contentTypeObj.brief + "\n\n" +
+      "TKG BRAND COLOURS TO RESPECT IN ANY GRAPHIC OVERLAY: White Marble, Charcoal Black, Coal Ember Orange, Warm Gold."
+    );
+  }
+
+  function formatForPlatform(platform, basePrompt){
+    switch(platform){
+      case "Canva":
+        return MANDATORY_RULE + "\n\n" + basePrompt +
+          "\n\nCANVA INSTRUCTIONS:\nCreate a design using the real uploaded TKG image/video as the background or focal asset. Apply TKG brand colours (White Marble, Charcoal Black, Coal Ember Orange, Warm Gold) only to text, overlays and shapes — never recolour the real food or real people in the source media.";
+      case "Gemini":
+        return MANDATORY_RULE + "\n\n" + basePrompt +
+          "\n\nGEMINI INSTRUCTIONS:\nAnalyse the uploaded TKG reference image/video first. Base all suggested captions, edits, or descriptions strictly on what is visually present in that real upload. Flag anything you are unsure about instead of guessing.";
+      case "InVideo":
+        return MANDATORY_RULE + "\n\n" + basePrompt +
+          "\n\nINVIDEO INSTRUCTIONS:\nEdit using only the uploaded real TKG video clips as source footage. Sequence cuts to match the Creative Brief above. Do not insert stock footage, stock food shots, or stock people in place of real TKG footage.";
+      case "ChatGPT":
+        return MANDATORY_RULE + "\n\n" + basePrompt +
+          "\n\nCHATGPT INSTRUCTIONS:\nWrite the caption/script for this post using only real, confirmed TKG details (real dish names, real customer quotes if provided, real stall facts). If a detail is not provided to you, leave a placeholder like [INSERT REAL DETAIL] instead of inventing one.";
+      default:
+        return MANDATORY_RULE + "\n\n" + basePrompt;
+    }
+  }
+
+  function generatePrompt(opts){
+    // opts: { contentTypeKey, designSystemKey, formatTarget, platform, forDay (optional) }
+    const ctObj = CONTENT_TYPES.find(c=>c.key===opts.contentTypeKey);
+    const dsObj = DESIGN_SYSTEMS.find(d=>d.key===opts.designSystemKey);
+    if(!ctObj || !dsObj) return null;
+
+    const basePrompt = buildBasePrompt(ctObj, dsObj, opts.formatTarget);
+    const fullPrompt = formatForPlatform(opts.platform, basePrompt);
+
+    const record = {
+      id: "tkg_" + Date.now() + "_" + Math.random().toString(36).slice(2,6),
+      createdAt: new Date().toISOString(),
+      dayIndex: opts.forDay || null,
+      contentType: ctObj.key,
+      designSystem: dsObj.key,
+      platform: opts.platform,
+      formatTarget: opts.formatTarget,
+      hashtags: ctObj.hashtags.slice(),
+      basePrompt: basePrompt,
+      fullPrompt: fullPrompt,
+      used: true
+    };
+
+    const prompts = getPrompts();
+    prompts.unshift(record);
+    setPrompts(prompts);
+    recordUsage(ctObj.key, dsObj.key, ctObj.hashtags);
+
+    return record;
+  }
+
+  // ---------- TOAST ----------
+  let toastTimer = null;
+  function toast(msg){
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>{ el.classList.remove("show"); }, 1700);
+  }
+
+  // ---------- CLIPBOARD ----------
+  function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>toast("Copied to clipboard")).catch(()=>fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  }
+  function fallbackCopy(text){
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      toast("Copied to clipboard");
+    }catch(e){
+      toast("Copy failed — select manually");
+    }
+  }
+
+  // ============================================================
+  // UI RENDERING — SCREEN 1: GENERATOR
+  // ============================================================
+
+  function renderChipGrid(containerId, items, selectedKey, onSelect, goldStyle){
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+    items.forEach(item=>{
+      const key = item.key || item;
+      const chip = document.createElement("div");
+      chip.className = "chip" + (key===selectedKey ? " selected" + (goldStyle?" gold":"") : "");
+      chip.textContent = key;
+      chip.addEventListener("click", ()=> onSelect(key));
+      container.appendChild(chip);
+    });
+  }
+
+  function renderGeneratorScreen(){
+    renderChipGrid("contentTypeGrid", CONTENT_TYPES, state.contentType, (key)=>{
+      state.contentType = key;
+      renderGeneratorScreen();
+    });
+    renderChipGrid("designSystemGrid", DESIGN_SYSTEMS, state.designSystem, (key)=>{
+      state.designSystem = key;
+      renderGeneratorScreen();
+    });
+    renderChipGrid("formatGrid", FORMAT_TARGETS, state.formatTarget, (key)=>{
+      state.formatTarget = key;
+      renderGeneratorScreen();
+    });
+    renderChipGrid("platformGrid", PLATFORMS, state.platform, (key)=>{
+      state.platform = key;
+      const s = getSettings(); s.lastPlatform = key; setSettings(s);
+      renderGeneratorScreen();
+    }, true);
+
+    const genBtn = document.getElementById("generateBtn");
+    genBtn.disabled = !(state.contentType && state.designSystem && state.platform);
+  }
+
+  function renderOutput(record){
+    const card = document.getElementById("outputCard");
+    if(!record){ card.style.display="none"; return; }
+    card.style.display="block";
+
+    document.getElementById("outputMeta").innerHTML = "";
+    const meta = [
+      {label:record.contentType, cls:"ember"},
+      {label:record.designSystem, cls:"gold"},
+      {label:record.formatTarget, cls:""},
+      {label:record.platform, cls:"gold"}
+    ];
+    const metaRow = document.getElementById("outputMeta");
+    meta.forEach(m=>{
+      const t = document.createElement("span");
+      t.className = "tag" + (m.cls?" "+m.cls:"");
+      t.textContent = m.label;
+      metaRow.appendChild(t);
+    });
+
+    const box = document.getElementById("outputBox");
+    box.innerHTML = "";
+    const lockSpan = document.createElement("span");
+    lockSpan.className = "locktext";
+    lockSpan.textContent = MANDATORY_RULE;
+    box.appendChild(lockSpan);
+    const rest = document.createElement("span");
+    rest.textContent = record.fullPrompt.replace(MANDATORY_RULE + "\n\n", "");
+    box.appendChild(rest);
+
+    const hashRow = document.getElementById("outputHashtags");
+    hashRow.innerHTML = "";
+    record.hashtags.forEach(h=>{
+      const tag = document.createElement("span");
+      tag.className = "hashtag";
+      tag.textContent = h;
+      hashRow.appendChild(tag);
+    });
+  }
+
+  document.getElementById("generateBtn").addEventListener("click", ()=>{
+    if(!state.contentType || !state.designSystem || !state.platform){
+      toast("Select content type, design system & platform");
+      return;
+    }
+    const record = generatePrompt({
+      contentTypeKey: state.contentType,
+      designSystemKey: state.designSystem,
+      formatTarget: state.formatTarget,
+      platform: state.platform
+    });
+    state.lastOutput = record;
+    renderOutput(record);
+    renderHistoryScreen();
+    toast("Prompt generated");
+  });
+
+  document.getElementById("regenBtn").addEventListener("click", ()=>{
+    document.getElementById("generateBtn").click();
+  });
+
+  document.getElementById("copyBtn").addEventListener("click", ()=>{
+    if(state.lastOutput) copyText(state.lastOutput.fullPrompt);
+  });
+
+  // ============================================================
+  // SCREEN 2: 365 ENGINE
+  // ============================================================
+
+  function getTodayAssignment(dayNum){
+    // Deterministic rotation: content type cycles through all 12,
+    // design system cycles through all 6, platform cycles through all 4.
+    // This guarantees balanced coverage across the 365-day cycle —
+    // no randomness, pure fixed rotation based on day index.
+    const ctIndex = (dayNum - 1) % CONTENT_TYPES.length;
+    const dsIndex = (dayNum - 1) % DESIGN_SYSTEMS.length;
+    const plIndex = (dayNum - 1) % PLATFORMS.length;
+    return {
+      contentType: CONTENT_TYPES[ctIndex].key,
+      designSystem: DESIGN_SYSTEMS[dsIndex].key,
+      platform: PLATFORMS[plIndex]
+    };
+  }
+
+  function renderEngineScreen(){
+    const day = getDayCounter();
+    document.getElementById("dayNum").textContent = day.currentDay;
+    document.getElementById("dayProgressFill").style.width = ((day.currentDay/365)*100).toFixed(1) + "%";
+
+    const assign = getTodayAssignment(day.currentDay);
+    document.getElementById("todayContentType").textContent = assign.contentType;
+    document.getElementById("todayDesignSystem").textContent = assign.designSystem;
+    document.getElementById("todayPlatform").textContent = assign.platform;
+
+    document.getElementById("settingsDayNum").textContent = day.currentDay;
+  }
+
+  document.getElementById("generateTodaySetBtn").addEventListener("click", ()=>{
+    const day = getDayCounter();
+    const assign = getTodayAssignment(day.currentDay);
+    const setCard = document.getElementById("todaySetCard");
+    const out = document.getElementById("todaySetOutput");
+    out.innerHTML = "";
+
+    FORMAT_TARGETS.forEach(fmt=>{
+      const record = generatePrompt({
+        contentTypeKey: assign.contentType,
+        designSystemKey: assign.designSystem,
+        formatTarget: fmt,
+        platform: assign.platform,
+        forDay: day.currentDay
+      });
+      const block = document.createElement("div");
+      block.className = "set-output";
+      const label = document.createElement("div");
+      label.className = "fmt-label";
+      label.textContent = fmt;
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "copy-mini";
+      copyBtn.textContent = "COPY";
+      copyBtn.addEventListener("click", (e)=>{ e.stopPropagation(); copyText(record.fullPrompt); });
+      label.appendChild(copyBtn);
+      const txt = document.createElement("div");
+      txt.className = "txt";
+      txt.textContent = record.fullPrompt;
+      block.appendChild(label);
+      block.appendChild(txt);
+      out.appendChild(block);
+    });
+
+    setCard.style.display = "block";
+    renderHistoryScreen();
+    toast("Today's full set generated (5 prompts)");
+  });
+
+  document.getElementById("advanceDayBtn").addEventListener("click", ()=>{
+    const day = getDayCounter();
+    day.currentDay = day.currentDay >= 365 ? 1 : day.currentDay + 1;
+    setDayCounter(day);
+    document.getElementById("todaySetCard").style.display = "none";
+    renderEngineScreen();
+    toast("Advanced to Day " + day.currentDay);
+  });
+
+  // ============================================================
+  // SCREEN 3: MEMORY / HISTORY
+  // ============================================================
+
+  function renderHistoryScreen(){
+    const prompts = getPrompts();
+    const h = getHistory();
+
+    // stat grid
+    const statGrid = document.getElementById("statGrid");
+    statGrid.innerHTML = "";
+    const totalPrompts = prompts.length;
+    const uniqueTypesUsed = Object.keys(h.contentTypeCounts).length;
+    const mostUsed = Object.entries(h.contentTypeCounts).sort((a,b)=>b[1]-a[1])[0];
+    const stats = [
+      {label:"Total Prompts", val: totalPrompts},
+      {label:"Content Types Used", val: uniqueTypesUsed + " / 12"},
+      {label:"Most Used Type", val: mostUsed ? mostUsed[0] : "—"},
+      {label:"Last Generated", val: prompts[0] ? timeAgo(prompts[0].createdAt) : "—"}
+    ];
+    stats.forEach(s=>{
+      const box = document.createElement("div");
+      box.className = "stat-box";
+      box.innerHTML = '<div class="stat-label">'+escapeHTML(s.label)+'</div><div class="stat-num" style="font-size:13px;">'+escapeHTML(String(s.val))+'</div>';
+      statGrid.appendChild(box);
+    });
+
+    document.getElementById("historyCountLabel").textContent = "SAVED PROMPTS (" + totalPrompts + ")";
+
+    const list = document.getElementById("historyList");
+    list.innerHTML = "";
+    if(prompts.length === 0){
+      list.innerHTML = '<div class="empty-state">No prompts generated yet.<br>Go to Generator or 365 Engine to create your first one.</div>';
+      return;
+    }
+
+    prompts.slice(0,200).forEach(record=>{
+      const item = document.createElement("div");
+      item.className = "history-item";
+
+      const top = document.createElement("div");
+      top.className = "hi-top";
+      const type = document.createElement("div");
+      type.className = "hi-type";
+      type.textContent = record.contentType + (record.dayIndex ? (" · Day " + record.dayIndex) : "");
+      const date = document.createElement("div");
+      date.className = "hi-date";
+      date.textContent = timeAgo(record.createdAt);
+      top.appendChild(type);
+      top.appendChild(date);
+
+      const subline = document.createElement("div");
+      subline.className = "hi-date";
+      subline.style.marginBottom = "2px";
+      subline.textContent = record.designSystem + " · " + record.formatTarget + " · " + record.platform;
+
+      const preview = document.createElement("div");
+      preview.className = "hi-preview";
+      preview.textContent = record.fullPrompt;
+
+      const actions = document.createElement("div");
+      actions.className = "hi-actions";
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "btn btn-outline btn-sm";
+      copyBtn.textContent = "Copy";
+      copyBtn.addEventListener("click", (e)=>{ e.stopPropagation(); copyText(record.fullPrompt); });
+      const delBtn = document.createElement("button");
+      delBtn.className = "btn btn-danger btn-sm";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        deletePrompt(record.id);
+      });
+      actions.appendChild(copyBtn);
+      actions.appendChild(delBtn);
+
+      item.appendChild(top);
+      item.appendChild(subline);
+      item.appendChild(preview);
+      item.appendChild(actions);
+
+      item.addEventListener("click", ()=> item.classList.toggle("expanded"));
+
+      list.appendChild(item);
+    });
+  }
+
+  function deletePrompt(id){
+    let prompts = getPrompts();
+    prompts = prompts.filter(p=>p.id!==id);
+    setPrompts(prompts);
+    renderHistoryScreen();
+    toast("Prompt deleted");
+  }
+
+  function timeAgo(iso){
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff/60000);
+    if(mins < 1) return "just now";
+    if(mins < 60) return mins + "m ago";
+    const hrs = Math.floor(mins/60);
+    if(hrs < 24) return hrs + "h ago";
+    const days = Math.floor(hrs/24);
+    return days + "d ago";
+  }
+
+  function escapeHTML(str){
+    return String(str).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  // ============================================================
+  // SCREEN 4: SETTINGS / EXPORT / IMPORT
+  // ============================================================
+
+  function renderSettingsScreen(){
+    document.getElementById("lockRuleDisplay").textContent = MANDATORY_RULE;
+    const day = getDayCounter();
+    document.getElementById("settingsDayNum").textContent = day.currentDay;
+  }
+
+  document.getElementById("exportBtn").addEventListener("click", ()=>{
+    const payload = {
+      app: "TKG Content OS V1",
+      exportedAt: new Date().toISOString(),
+      prompts: getPrompts(),
+      history: getHistory(),
+      settings: getSettings(),
+      dayCounter: getDayCounter()
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tkg-content-os-export-" + new Date().toISOString().slice(0,10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast("Export downloaded");
+  });
+
+  document.getElementById("importBtn").addEventListener("click", ()=>{
+    const raw = document.getElementById("importArea").value.trim();
+    if(!raw){ toast("Paste JSON first"); return; }
+    let data;
+    try{
+      data = JSON.parse(raw);
+    }catch(e){
+      toast("Invalid JSON");
+      return;
+    }
+    try{
+      if(Array.isArray(data.prompts)){
+        const existing = getPrompts();
+        const existingIds = new Set(existing.map(p=>p.id));
+        const merged = existing.concat(data.prompts.filter(p=>!existingIds.has(p.id)));
+        setPrompts(merged);
+      }
+      if(data.history && typeof data.history === "object"){
+        setHistory(data.history);
+      }
+      if(data.settings && typeof data.settings === "object"){
+        setSettings(data.settings);
+      }
+      if(data.dayCounter && typeof data.dayCounter === "object"){
+        setDayCounter(data.dayCounter);
+      }
+      document.getElementById("importArea").value = "";
+      renderAll();
+      toast("Import successful");
+    }catch(e){
+      console.error(e);
+      toast("Import failed — check JSON structure");
+    }
+  });
+
+  document.getElementById("resetDayBtn").addEventListener("click", ()=>{
+    setDayCounter({ currentDay:1, startDate: new Date().toISOString().slice(0,10) });
+    renderEngineScreen();
+    renderSettingsScreen();
+    toast("Day counter reset to 1");
+  });
+
+  document.getElementById("clearAllBtn").addEventListener("click", ()=>{
+    if(!confirm("This will permanently delete ALL TKG Content OS data from this browser. This cannot be undone. Continue?")) return;
+    localStorage.removeItem(KEYS.PROMPTS);
+    localStorage.removeItem(KEYS.HISTORY);
+    localStorage.removeItem(KEYS.SETTINGS);
+    localStorage.removeItem(KEYS.DAY);
+    state = { contentType:null, designSystem:null, formatTarget:FORMAT_TARGETS[0], platform:PLATFORMS[0], lastOutput:null };
+    renderAll();
+    document.getElementById("outputCard").style.display = "none";
+    toast("All data cleared");
+  });
+
+  // ============================================================
+  // TAB NAVIGATION
+  // ============================================================
+
+  const screens = ["generator","engine","history","settings"];
+  function switchScreen(name){
+    screens.forEach(s=>{
+      document.getElementById("screen-"+s).classList.toggle("active", s===name);
+    });
+    document.querySelectorAll(".tab-btn").forEach(btn=>{
+      btn.classList.toggle("active", btn.dataset.screen===name);
+    });
+    document.getElementById("mainScroll").scrollTop = 0;
+    if(name==="engine") renderEngineScreen();
+    if(name==="history") renderHistoryScreen();
+    if(name==="settings") renderSettingsScreen();
+  }
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=> switchScreen(btn.dataset.screen));
+  });
+
+  // ============================================================
+  // INIT
+  // ============================================================
+
+  function renderAll(){
+    const settings = getSettings();
+    state.platform = settings.lastPlatform || PLATFORMS[0];
+    state.formatTarget = settings.lastFormatTarget || FORMAT_TARGETS[0];
+    renderGeneratorScreen();
+    renderEngineScreen();
+    renderHistoryScreen();
+    renderSettingsScreen();
+  }
+
+  renderAll();
+
+  // ============================================================
+  // PWA — SERVICE WORKER REGISTRATION
+  // ============================================================
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+
+})();
+</script>
+
+</body>
+</html>
