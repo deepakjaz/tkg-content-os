@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Brand Vault — TKG Content OS</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="vault-header">
+  <div class="vault-header__title">
+    <span class="vault-header__mark">BRAND</span>
+    <span class="vault-header__mark vault-header__mark--accent">VAULT</span>
+  </div>
+  <div class="vault-header__sub">Single source of truth — TKG</div>
+  <div class="vault-header__badge">V1</div>
+</header>
+
+<main class="vault-shell">
+
+  <!-- ===== BRAND PROFILE PANEL ===== -->
+  <section class="panel" id="panel-brand">
+    <div class="panel__head">
+      <span class="panel__index">BRAND PROFILE</span>
+      <button class="btn btn--ghost" id="btn-edit-brand" type="button">Edit</button>
+    </div>
+
+    <div class="brand-profile" id="brand-profile-view">
+      <div class="brand-profile__row">
+        <span class="brand-profile__label">Colors</span>
+        <div class="swatch-row" id="swatch-row"></div>
+      </div>
+      <div class="brand-profile__row">
+        <span class="brand-profile__label">Typography</span>
+        <span class="brand-profile__value" id="typography-display">—</span>
+      </div>
+      <div class="brand-profile__row">
+        <span class="brand-profile__label">Voice</span>
+        <span class="brand-profile__value" id="voice-display">—</span>
+      </div>
+    </div>
+
+    <!-- Edit form, hidden until "Edit" pressed -->
+    <form class="brand-form" id="brand-form" hidden>
+      <div class="brand-form__colors" id="brand-form-colors"></div>
+      <button class="btn btn--ghost btn--small" id="btn-add-color" type="button">+ Add color</button>
+
+      <label class="field-label" for="input-display-font">Display font</label>
+      <input class="field-input" id="input-display-font" type="text" placeholder="e.g. Cinzel">
+
+      <label class="field-label" for="input-body-font">Body font</label>
+      <input class="field-input" id="input-body-font" type="text" placeholder="e.g. Inter">
+
+      <label class="field-label" for="input-voice">Brand voice</label>
+      <textarea class="field-input field-input--area" id="input-voice" rows="3" placeholder="Cinematic, relatable, emotional, funny — photographers talking to photographers"></textarea>
+
+      <div class="brand-form__actions">
+        <button class="btn btn--ghost btn--small" id="btn-cancel-brand" type="button">Cancel</button>
+        <button class="btn btn--primary btn--small" id="btn-save-brand" type="submit">Save</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ===== ASSET REGISTRY PANEL ===== -->
+  <section class="panel" id="panel-assets">
+    <div class="panel__head">
+      <span class="panel__index">ASSET REGISTRY</span>
+      <button class="btn btn--primary" id="btn-new-asset" type="button">+ New Asset</button>
+    </div>
+
+    <div class="filter-bar">
+      <input class="field-input field-input--search" id="search-input" type="text" placeholder="Search name, tag, description…">
+      <select class="field-input field-input--select" id="filter-category">
+        <option value="">All categories</option>
+      </select>
+      <select class="field-input field-input--select" id="filter-status">
+        <option value="">All statuses</option>
+        <option value="Approved">Approved</option>
+        <option value="Draft">Draft</option>
+        <option value="Archived">Archived</option>
+      </select>
+    </div>
+
+    <div class="asset-grid" id="asset-grid"></div>
+
+    <div class="empty-state" id="empty-state" hidden>
+      <div class="empty-state__title">No assets yet</div>
+      <div class="empty-state__body">Catalog your first logo, menu item, or photo reference to start the vault.</div>
+      <button class="btn btn--primary" id="btn-empty-new" type="button">+ New Asset</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== ASSET DETAIL / EDIT MODAL ===== -->
+<div class="modal-backdrop" id="modal-backdrop" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal__head">
+      <span class="modal__title" id="modal-title">New Asset</span>
+      <button class="modal__close" id="btn-close-modal" type="button" aria-label="Close">×</button>
+    </div>
+
+    <form class="modal__body" id="asset-form">
+      <label class="field-label" for="f-name">Name</label>
+      <input class="field-input" id="f-name" type="text" required placeholder="e.g. Primary Logo — Black">
+
+      <div class="field-row">
+        <div class="field-col">
+          <label class="field-label" for="f-category">Category</label>
+          <select class="field-input" id="f-category" required>
+            <option value="Logo">Logo</option>
+            <option value="Product">Product</option>
+            <option value="Menu Item">Menu Item</option>
+            <option value="Packaging">Packaging</option>
+            <option value="Background">Background</option>
+            <option value="QR Code">QR Code</option>
+            <option value="Stall Photo">Stall Photo</option>
+            <option value="Icon">Icon</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field-col">
+          <label class="field-label" for="f-status">Status</label>
+          <select class="field-input" id="f-status" required>
+            <option value="Draft">Draft</option>
+            <option value="Approved">Approved</option>
+            <option value="Archived">Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="field-label" for="f-tags">Tags <span class="field-label__hint">comma separated</span></label>
+      <input class="field-input" id="f-tags" type="text" placeholder="e.g. weekend, hero, instagram">
+
+      <label class="field-label" for="f-description">Description</label>
+      <textarea class="field-input field-input--area" id="f-description" rows="2" placeholder="What this asset is, when to use it"></textarea>
+
+      <div class="field-row">
+        <div class="field-col">
+          <label class="field-label" for="f-source">Source</label>
+          <select class="field-input" id="f-source" required>
+            <option value="upload">User upload</option>
+            <option value="local">Local device</option>
+            <option value="github">GitHub repository</option>
+            <option value="gdrive">Google Drive</option>
+            <option value="canva">Canva</option>
+            <option value="url">URL</option>
+          </select>
+        </div>
+        <div class="field-col">
+          <label class="field-label" for="f-version">Version</label>
+          <input class="field-input" id="f-version" type="text" placeholder="v1">
+        </div>
+      </div>
+
+      <label class="field-label" for="f-reference">
+        Reference <span class="field-label__hint" id="reference-hint">where the real file lives</span>
+      </label>
+      <input class="field-input" id="f-reference" type="text" placeholder="e.g. WhatsApp backup, or repo path, or link">
+
+      <div class="modal__actions">
+        <button class="btn btn--danger btn--small" id="btn-delete-asset" type="button" hidden>Delete</button>
+        <div class="modal__actions-right">
+          <button class="btn btn--ghost btn--small" id="btn-cancel-asset" type="button">Cancel</button>
+          <button class="btn btn--primary btn--small" type="submit">Save Asset</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="script.js"></script>
+</body>
+</html>
