@@ -1,356 +1,474 @@
-:root {
-  --marble: #F2EFE9;
-  --marble-dim: #E5E0D6;
-  --charcoal: #161513;
-  --charcoal-2: #1F1D1A;
-  --charcoal-3: #2A2724;
-  --ember: #FF5722;
-  --ember-dim: #C94A1F;
-  --gold: #D4AF37;
-  --gold-dim: #B08F2A;
-  --line: #3A362F;
-  --text-dim: #A8A199;
-  --danger: #E0524A;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-}
+(function () {
+  "use strict";
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+  /* =========================================================
+     STORAGE KEYS — this is the public data contract.
+     Other modules may READ these keys. Only this file WRITES them.
+     See README.md for the documented schema.
+     ========================================================= */
+  var KEY_ASSETS = "tkg_vault_assets_v1";
+  var KEY_BRAND  = "tkg_vault_brand_v1";
 
-/* Safety net: [hidden] must always win, regardless of any display rule
-   set on the same element elsewhere in this file. Without this, an
-   element styled with display:flex/grid/block can stay visible and
-   intercept clicks even while the `hidden` attribute is set on it. */
-[hidden] { display: none !important; }
+  var CATEGORIES = ["Logo", "Product", "Menu Item", "Packaging", "Background", "QR Code", "Stall Photo", "Icon", "Other"];
 
-body {
-  background: var(--charcoal);
-  color: var(--marble);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
+  /* =========================================================
+     STATE
+     ========================================================= */
+  var state = {
+    assets: [],
+    brand: null,
+    editingAssetId: null,   // null = creating new
+    filters: { search: "", category: "", status: "" }
+  };
 
-/* ===== HEADER ===== */
-.vault-header {
-  padding: calc(20px + var(--safe-top)) 20px 16px;
-  border-bottom: 1px solid var(--line);
-  position: relative;
-}
-.vault-header__title {
-  font-family: monospace;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-}
-.vault-header__mark { color: var(--marble); }
-.vault-header__mark--accent { color: var(--ember); }
-.vault-header__sub {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-top: 4px;
-}
-.vault-header__badge {
-  position: absolute;
-  top: calc(20px + var(--safe-top));
-  right: 20px;
-  font-family: monospace;
-  font-size: 11px;
-  color: var(--gold);
-  border: 1px solid var(--gold-dim);
-  border-radius: 20px;
-  padding: 3px 10px;
-}
+  /* =========================================================
+     PERSISTENCE
+     ========================================================= */
+  function loadAssets() {
+    try {
+      var raw = localStorage.getItem(KEY_ASSETS);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error("Brand Vault: failed to parse assets, starting fresh.", e);
+      return [];
+    }
+  }
 
-/* ===== SHELL / PANELS ===== */
-.vault-shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 20px 16px calc(40px + var(--safe-bottom));
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
+  function saveAssets() {
+    localStorage.setItem(KEY_ASSETS, JSON.stringify(state.assets));
+  }
 
-.panel {
-  background: var(--charcoal-2);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 18px;
-}
-.panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.panel__index {
-  font-family: monospace;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  color: var(--gold);
-  font-weight: 700;
-}
+  function loadBrand() {
+    try {
+      var raw = localStorage.getItem(KEY_BRAND);
+      return raw ? JSON.parse(raw) : defaultBrandProfile();
+    } catch (e) {
+      console.error("Brand Vault: failed to parse brand profile, using default.", e);
+      return defaultBrandProfile();
+    }
+  }
 
-/* ===== BUTTONS ===== */
-.btn {
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 9px 14px;
-  cursor: pointer;
-  transition: filter 0.15s ease, background 0.15s ease;
-}
-.btn--small { padding: 7px 12px; font-size: 13px; }
-.btn--primary { background: var(--ember); color: var(--marble); }
-.btn--primary:hover { filter: brightness(1.1); }
-.btn--ghost { background: transparent; color: var(--text-dim); border-color: var(--line); }
-.btn--ghost:hover { color: var(--marble); border-color: var(--text-dim); }
-.btn--danger { background: transparent; color: var(--danger); border-color: var(--danger); }
-.btn--danger:hover { background: var(--danger); color: var(--marble); }
+  function saveBrand() {
+    state.brand.lastUpdated = new Date().toISOString();
+    localStorage.setItem(KEY_BRAND, JSON.stringify(state.brand));
+  }
 
-/* ===== BRAND PROFILE ===== */
-.brand-profile { display: flex; flex-direction: column; gap: 12px; }
-.brand-profile__row {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-.brand-profile__label {
-  font-size: 12px;
-  color: var(--text-dim);
-  width: 80px;
-  flex-shrink: 0;
-  padding-top: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.brand-profile__value { font-size: 14px; line-height: 1.5; }
+  function defaultBrandProfile() {
+    return {
+      brand: "TKG",
+      colors: [
+        { name: "Charcoal", hex: "#161513" },
+        { name: "Ember", hex: "#FF5722" },
+        { name: "Gold", hex: "#D4AF37" },
+        { name: "Marble", hex: "#F2EFE9" }
+      ],
+      typography: { display: "", body: "" },
+      voice: "",
+      lastUpdated: new Date().toISOString()
+    };
+  }
 
-.swatch-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.swatch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--charcoal-3);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 4px 8px 4px 4px;
-}
-.swatch__chip {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  border: 1px solid rgba(255,255,255,0.15);
-  flex-shrink: 0;
-}
-.swatch__label { font-family: monospace; font-size: 11px; color: var(--text-dim); }
+  function makeAssetId() {
+    return "ast_" + Math.random().toString(36).slice(2, 8);
+  }
 
-.brand-form { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-.brand-form[hidden] { display: none !important; }
-.brand-form__colors { display: flex; flex-direction: column; gap: 8px; }
-.color-row { display: flex; gap: 8px; align-items: center; }
-.color-row input[type="color"] {
-  width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 6px;
-  background: var(--charcoal-3); cursor: pointer; padding: 2px;
-}
-.color-row .field-input { flex: 1; }
-.color-row__remove {
-  background: none; border: none; color: var(--text-dim); cursor: pointer;
-  font-size: 16px; padding: 4px 8px;
-}
-.color-row__remove:hover { color: var(--danger); }
-.brand-form__actions {
-  display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;
-}
+  /* =========================================================
+     DOM REFS
+     ========================================================= */
+  var el = {
+    swatchRow: document.getElementById("swatch-row"),
+    typographyDisplay: document.getElementById("typography-display"),
+    voiceDisplay: document.getElementById("voice-display"),
+    brandProfileView: document.getElementById("brand-profile-view"),
+    brandForm: document.getElementById("brand-form"),
+    brandFormColors: document.getElementById("brand-form-colors"),
+    btnEditBrand: document.getElementById("btn-edit-brand"),
+    btnAddColor: document.getElementById("btn-add-color"),
+    btnCancelBrand: document.getElementById("btn-cancel-brand"),
+    inputDisplayFont: document.getElementById("input-display-font"),
+    inputBodyFont: document.getElementById("input-body-font"),
+    inputVoice: document.getElementById("input-voice"),
 
-/* ===== FILTER BAR ===== */
-.filter-bar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-.field-input {
-  font-family: inherit;
-  font-size: 14px;
-  background: var(--charcoal-3);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--marble);
-  padding: 10px 12px;
-  width: 100%;
-}
-.field-input:focus {
-  outline: none;
-  border-color: var(--gold-dim);
-}
-.field-input--search { flex: 1; min-width: 140px; }
-.field-input--select { width: auto; flex-shrink: 0; }
-.field-input--area { resize: vertical; font-family: inherit; line-height: 1.5; }
+    searchInput: document.getElementById("search-input"),
+    filterCategory: document.getElementById("filter-category"),
+    filterStatus: document.getElementById("filter-status"),
+    assetGrid: document.getElementById("asset-grid"),
+    emptyState: document.getElementById("empty-state"),
+    btnNewAsset: document.getElementById("btn-new-asset"),
+    btnEmptyNew: document.getElementById("btn-empty-new"),
 
-/* ===== ASSET GRID ===== */
-.asset-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-}
+    modalBackdrop: document.getElementById("modal-backdrop"),
+    modalTitle: document.getElementById("modal-title"),
+    assetForm: document.getElementById("asset-form"),
+    btnCloseModal: document.getElementById("btn-close-modal"),
+    btnCancelAsset: document.getElementById("btn-cancel-asset"),
+    btnDeleteAsset: document.getElementById("btn-delete-asset"),
 
-.asset-card {
-  position: relative;
-  background: var(--charcoal-3);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 14px 12px 12px;
-  cursor: pointer;
-  transition: border-color 0.15s ease, transform 0.1s ease;
-  overflow: hidden;
-}
-.asset-card:hover { border-color: var(--text-dim); transform: translateY(-1px); }
+    fName: document.getElementById("f-name"),
+    fCategory: document.getElementById("f-category"),
+    fStatus: document.getElementById("f-status"),
+    fTags: document.getElementById("f-tags"),
+    fDescription: document.getElementById("f-description"),
+    fSource: document.getElementById("f-source"),
+    fVersion: document.getElementById("f-version"),
+    fReference: document.getElementById("f-reference"),
+    referenceHint: document.getElementById("reference-hint"),
 
-/* the "stamp" signature element — rotated corner tag, version + status */
-.asset-card__stamp {
-  position: absolute;
-  top: 8px;
-  right: -22px;
-  transform: rotate(40deg);
-  font-family: monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 2px 26px;
-  text-align: center;
-}
-.asset-card__stamp--approved { background: var(--gold); color: var(--charcoal); }
-.asset-card__stamp--draft { background: var(--charcoal-2); color: var(--text-dim); border: 1px solid var(--line); }
-.asset-card__stamp--archived { background: var(--danger); color: var(--marble); }
+    toast: document.getElementById("toast")
+  };
 
-.asset-card__category {
-  font-family: monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
-}
-.asset-card__name {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-  margin-bottom: 8px;
-  padding-right: 18px;
-}
-.asset-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-bottom: 8px;
-}
-.asset-card__tag {
-  font-size: 10px;
-  color: var(--text-dim);
-  background: var(--charcoal-2);
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-.asset-card__footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  border-top: 1px solid var(--line);
-  padding-top: 8px;
-  margin-top: 4px;
-}
+  /* =========================================================
+     TOAST
+     ========================================================= */
+  var toastTimer = null;
+  function showToast(message) {
+    el.toast.textContent = message;
+    el.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.toast.hidden = true; }, 2200);
+  }
 
-/* ===== EMPTY STATE ===== */
-.empty-state { text-align: center; padding: 36px 16px; }
-.empty-state__title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-.empty-state__body { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; line-height: 1.5; }
+  /* =========================================================
+     BRAND PROFILE — render + edit
+     ========================================================= */
+  function renderBrandProfile() {
+    el.swatchRow.innerHTML = "";
+    (state.brand.colors || []).forEach(function (c) {
+      var s = document.createElement("div");
+      s.className = "swatch";
+      var chip = document.createElement("div");
+      chip.className = "swatch__chip";
+      chip.style.background = c.hex;
+      var label = document.createElement("span");
+      label.className = "swatch__label";
+      label.textContent = (c.name || "—") + " " + c.hex;
+      s.appendChild(chip);
+      s.appendChild(label);
+      el.swatchRow.appendChild(s);
+    });
+    if (!state.brand.colors || state.brand.colors.length === 0) {
+      el.swatchRow.innerHTML = '<span class="brand-profile__value" style="color:var(--text-dim)">No colors set</span>';
+    }
 
-/* ===== MODAL ===== */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  z-index: 100;
-}
-.modal-backdrop[hidden] {
-  display: none !important;
-}
-@media (min-width: 640px) {
-  .modal-backdrop { align-items: center; }
-}
-.modal {
-  background: var(--charcoal-2);
-  border: 1px solid var(--line);
-  border-radius: 16px 16px 0 0;
-  width: 100%;
-  max-width: 480px;
-  max-height: 88vh;
-  overflow-y: auto;
-  padding-bottom: var(--safe-bottom);
-}
-@media (min-width: 640px) {
-  .modal { border-radius: 16px; }
-}
-.modal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 18px 14px;
-  border-bottom: 1px solid var(--line);
-  position: sticky;
-  top: 0;
-  background: var(--charcoal-2);
-}
-.modal__title { font-size: 16px; font-weight: 700; }
-.modal__close {
-  background: none; border: none; color: var(--text-dim);
-  font-size: 22px; line-height: 1; cursor: pointer; padding: 4px;
-}
-.modal__close:hover { color: var(--marble); }
-.modal__body { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    var disp = state.brand.typography && state.brand.typography.display;
+    var body = state.brand.typography && state.brand.typography.body;
+    if (disp || body) {
+      el.typographyDisplay.textContent = [disp, body].filter(Boolean).join(" / ");
+    } else {
+      el.typographyDisplay.textContent = "—";
+    }
 
-.field-label {
-  font-size: 12px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  display: block;
-  margin-bottom: -4px;
-}
-.field-label__hint { text-transform: none; letter-spacing: 0; opacity: 0.7; }
-.field-row { display: flex; gap: 10px; }
-.field-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    el.voiceDisplay.textContent = state.brand.voice || "—";
+  }
 
-.modal__actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-}
-.modal__actions-right { display: flex; gap: 8px; }
+  function openBrandForm() {
+    el.brandFormColors.innerHTML = "";
+    (state.brand.colors || []).forEach(function (c) { addColorRow(c.name, c.hex); });
+    el.inputDisplayFont.value = (state.brand.typography && state.brand.typography.display) || "";
+    el.inputBodyFont.value = (state.brand.typography && state.brand.typography.body) || "";
+    el.inputVoice.value = state.brand.voice || "";
 
-/* ===== TOAST ===== */
-.toast {
-  position: fixed;
-  bottom: calc(20px + var(--safe-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--charcoal-3);
-  border: 1px solid var(--gold-dim);
-  color: var(--marble);
-  font-size: 13px;
-  padding: 10px 18px;
-  border-radius: 20px;
-  z-index: 200;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-}
+    el.brandProfileView.hidden = true;
+    el.brandForm.hidden = false;
+  }
+
+  function closeBrandForm() {
+    el.brandForm.hidden = true;
+    el.brandProfileView.hidden = false;
+  }
+
+  function addColorRow(name, hex) {
+    var row = document.createElement("div");
+    row.className = "color-row";
+
+    var colorInput = document.createElement("input");
+    colorInput.type = "color";
+    colorInput.value = hex || "#FF5722";
+
+    var nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.className = "field-input";
+    nameInput.placeholder = "Color name";
+    nameInput.value = name || "";
+
+    var removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "color-row__remove";
+    removeBtn.textContent = "×";
+    removeBtn.setAttribute("aria-label", "Remove color");
+    removeBtn.addEventListener("click", function () { row.remove(); });
+
+    row.appendChild(colorInput);
+    row.appendChild(nameInput);
+    row.appendChild(removeBtn);
+    el.brandFormColors.appendChild(row);
+  }
+
+  function collectColorsFromForm() {
+    var rows = el.brandFormColors.querySelectorAll(".color-row");
+    var colors = [];
+    rows.forEach(function (row) {
+      var hex = row.querySelector('input[type="color"]').value;
+      var name = row.querySelector('input[type="text"]').value.trim();
+      colors.push({ name: name || "Untitled", hex: hex });
+    });
+    return colors;
+  }
+
+  el.btnEditBrand.addEventListener("click", openBrandForm);
+  el.btnAddColor.addEventListener("click", function () { addColorRow("", "#FF5722"); });
+  el.btnCancelBrand.addEventListener("click", closeBrandForm);
+
+  el.brandForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    state.brand.colors = collectColorsFromForm();
+    state.brand.typography = {
+      display: el.inputDisplayFont.value.trim(),
+      body: el.inputBodyFont.value.trim()
+    };
+    state.brand.voice = el.inputVoice.value.trim();
+    saveBrand();
+    renderBrandProfile();
+    closeBrandForm();
+    showToast("Brand profile saved");
+  });
+
+  /* =========================================================
+     ASSET GRID — filtering + render
+     ========================================================= */
+  function populateCategoryFilter() {
+    CATEGORIES.forEach(function (cat) {
+      var opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat;
+      el.filterCategory.appendChild(opt);
+    });
+  }
+
+  function getFilteredAssets() {
+    var q = state.filters.search.trim().toLowerCase();
+    return state.assets.filter(function (a) {
+      if (state.filters.category && a.category !== state.filters.category) return false;
+      if (state.filters.status && a.status !== state.filters.status) return false;
+      if (q) {
+        var haystack = [a.name, a.description, (a.tags || []).join(" ")].join(" ").toLowerCase();
+        if (haystack.indexOf(q) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function statusStampClass(status) {
+    if (status === "Approved") return "asset-card__stamp--approved";
+    if (status === "Archived") return "asset-card__stamp--archived";
+    return "asset-card__stamp--draft";
+  }
+
+  function formatDate(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { year: "2-digit", month: "short", day: "numeric" });
+  }
+
+  function renderAssetGrid() {
+    var list = getFilteredAssets();
+    el.assetGrid.innerHTML = "";
+
+    if (state.assets.length === 0) {
+      el.emptyState.hidden = false;
+      el.assetGrid.hidden = true;
+      return;
+    }
+    el.emptyState.hidden = true;
+    el.assetGrid.hidden = false;
+
+    list.forEach(function (asset) {
+      var card = document.createElement("div");
+      card.className = "asset-card";
+      card.tabIndex = 0;
+      card.setAttribute("role", "button");
+      card.addEventListener("click", function () { openAssetForm(asset.assetId); });
+      card.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") openAssetForm(asset.assetId);
+      });
+
+      var stamp = document.createElement("div");
+      stamp.className = "asset-card__stamp " + statusStampClass(asset.status);
+      stamp.textContent = (asset.version || "v1") + " · " + asset.status.slice(0, 3).toUpperCase();
+      card.appendChild(stamp);
+
+      var category = document.createElement("div");
+      category.className = "asset-card__category";
+      category.textContent = asset.category;
+      card.appendChild(category);
+
+      var name = document.createElement("div");
+      name.className = "asset-card__name";
+      name.textContent = asset.name;
+      card.appendChild(name);
+
+      if (asset.tags && asset.tags.length) {
+        var tagsWrap = document.createElement("div");
+        tagsWrap.className = "asset-card__tags";
+        asset.tags.slice(0, 4).forEach(function (t) {
+          var tag = document.createElement("span");
+          tag.className = "asset-card__tag";
+          tag.textContent = t;
+          tagsWrap.appendChild(tag);
+        });
+        card.appendChild(tagsWrap);
+      }
+
+      var footer = document.createElement("div");
+      footer.className = "asset-card__footer";
+      var src = document.createElement("span");
+      src.textContent = asset.source;
+      var date = document.createElement("span");
+      date.textContent = formatDate(asset.lastUpdated);
+      footer.appendChild(src);
+      footer.appendChild(date);
+      card.appendChild(footer);
+
+      el.assetGrid.appendChild(card);
+    });
+  }
+
+  /* =========================================================
+     ASSET MODAL — create / edit / delete
+     ========================================================= */
+  function referenceHintFor(source) {
+    switch (source) {
+      case "github": return "repo-relative path";
+      case "gdrive":
+      case "canva":
+      case "url": return "paste the link";
+      default: return "where the real file lives";
+    }
+  }
+
+  el.fSource.addEventListener("change", function () {
+    el.referenceHint.textContent = referenceHintFor(el.fSource.value);
+  });
+
+  function openAssetForm(assetId) {
+    state.editingAssetId = assetId || null;
+
+    if (assetId) {
+      var asset = state.assets.find(function (a) { return a.assetId === assetId; });
+      if (!asset) return;
+      el.modalTitle.textContent = "Edit Asset";
+      el.fName.value = asset.name;
+      el.fCategory.value = asset.category;
+      el.fStatus.value = asset.status;
+      el.fTags.value = (asset.tags || []).join(", ");
+      el.fDescription.value = asset.description || "";
+      el.fSource.value = asset.source;
+      el.fVersion.value = asset.version || "";
+      el.fReference.value = asset.reference || "";
+      el.btnDeleteAsset.hidden = false;
+    } else {
+      el.modalTitle.textContent = "New Asset";
+      el.assetForm.reset();
+      el.fStatus.value = "Draft";
+      el.fSource.value = "upload";
+      el.fVersion.value = "v1";
+      el.btnDeleteAsset.hidden = true;
+    }
+
+    el.referenceHint.textContent = referenceHintFor(el.fSource.value);
+    el.modalBackdrop.hidden = false;
+  }
+
+  function closeAssetForm() {
+    el.modalBackdrop.hidden = true;
+    state.editingAssetId = null;
+  }
+
+  el.btnNewAsset.addEventListener("click", function () { openAssetForm(null); });
+  el.btnEmptyNew.addEventListener("click", function () { openAssetForm(null); });
+  el.btnCloseModal.addEventListener("click", closeAssetForm);
+  el.btnCancelAsset.addEventListener("click", closeAssetForm);
+  el.modalBackdrop.addEventListener("click", function (e) {
+    if (e.target === el.modalBackdrop) closeAssetForm();
+  });
+
+  el.assetForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    var tags = el.fTags.value.split(",").map(function (t) { return t.trim(); }).filter(Boolean);
+    var now = new Date().toISOString();
+
+    if (state.editingAssetId) {
+      var asset = state.assets.find(function (a) { return a.assetId === state.editingAssetId; });
+      asset.name = el.fName.value.trim();
+      asset.category = el.fCategory.value;
+      asset.status = el.fStatus.value;
+      asset.tags = tags;
+      asset.description = el.fDescription.value.trim();
+      asset.source = el.fSource.value;
+      asset.version = el.fVersion.value.trim() || "v1";
+      asset.reference = el.fReference.value.trim();
+      asset.lastUpdated = now;
+      showToast("Asset updated");
+    } else {
+      state.assets.push({
+        assetId: makeAssetId(),
+        name: el.fName.value.trim(),
+        category: el.fCategory.value,
+        status: el.fStatus.value,
+        tags: tags,
+        description: el.fDescription.value.trim(),
+        brand: state.brand.brand || "TKG",
+        version: el.fVersion.value.trim() || "v1",
+        lastUpdated: now,
+        source: el.fSource.value,
+        reference: el.fReference.value.trim()
+      });
+      showToast("Asset added");
+    }
+
+    saveAssets();
+    renderAssetGrid();
+    closeAssetForm();
+  });
+
+  el.btnDeleteAsset.addEventListener("click", function () {
+    if (!state.editingAssetId) return;
+    if (!confirm("Delete this asset? This can't be undone.")) return;
+    state.assets = state.assets.filter(function (a) { return a.assetId !== state.editingAssetId; });
+    saveAssets();
+    renderAssetGrid();
+    closeAssetForm();
+    showToast("Asset deleted");
+  });
+
+  /* =========================================================
+     FILTER BAR EVENTS
+     ========================================================= */
+  el.searchInput.addEventListener("input", function () {
+    state.filters.search = el.searchInput.value;
+    renderAssetGrid();
+  });
+  el.filterCategory.addEventListener("change", function () {
+    state.filters.category = el.filterCategory.value;
+    renderAssetGrid();
+  });
+  el.filterStatus.addEventListener("change", function () {
+    state.filters.status = el.filterStatus.value;
+    renderAssetGrid();
+  });
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  function init() {
+    state.assets = loadAssets();
+    state.brand = loadBrand();
+    populateCategoryFilter();
+    renderBrandProfile();
+    renderAssetGrid();
+  }
+
+  init();
+})();
